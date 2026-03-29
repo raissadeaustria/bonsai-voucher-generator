@@ -360,7 +360,7 @@
 <!-- ── FORM ── -->
 <div class="form-panel">
   <h1>Generátor Dárkových Poukazů</h1>
-  <p class="subtitle">Vyplňte údaje a klikněte na „Vytvořit". Pro export použijte „Tisk / Uložit PDF".</p>
+  <p class="subtitle">Vyplňte údaje a stáhněte PDF. Pro nový poukaz klikněte na „Další poukaz".</p>
 
   <div class="form-row">
     <div class="form-group">
@@ -432,8 +432,8 @@
   </div>
 
   <div class="btn-row">
-    <button class="btn btn-primary" onclick="createNewVoucher()">Vytvořit poukaz</button>
-    <button class="btn btn-secondary" onclick="savePDF()">Uložit PDF</button>
+    <button class="btn btn-primary" onclick="savePDF()">Uložit PDF</button>
+    <button class="btn btn-secondary" onclick="nextVoucher()">Další poukaz</button>
   </div>
 </div>
 
@@ -607,13 +607,10 @@
   window.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('bonsai_voucher_index', '0');
     setTimeout(scaleVoucher, 100);
-    // Start with empty form — no code generated until user clicks "Vytvořit poukaz"
+    // Auto-generate first voucher on page load
     document.getElementById('expiry').value = defaultExpiry();
-    document.getElementById('code').value = '';
-    // Show placeholder state in voucher preview
-    document.getElementById('v-code').textContent = 'XXXX-XXXX';
-    document.getElementById('v-service').textContent = document.getElementById('service').value;
-    document.getElementById('v-expiry').textContent = formatDate(defaultExpiry());
+    document.getElementById('code').value = generateCode();
+    generateVoucher();
   });
 
   function generateVoucher() {
@@ -688,8 +685,10 @@
 
 
   function savePDF() {
+    // Ensure voucher preview is up to date before capture
+    generateVoucher();
     const voucher = document.getElementById('voucher');
-    const btn = document.querySelector('.btn-secondary');
+    const btn = document.querySelector('.btn-primary');
     btn.textContent = 'Generování...';
     btn.disabled = true;
 
@@ -730,7 +729,7 @@
     });
   }
 
-  function createNewVoucher() {
+  function nextVoucher() {
     document.getElementById('message').value = '';
     document.getElementById('code').value = generateCode();
     document.getElementById('expiry').value = defaultExpiry();
