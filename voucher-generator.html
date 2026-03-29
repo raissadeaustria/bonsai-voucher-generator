@@ -561,16 +561,40 @@
     return year + '-' + seq + suffix;
   }
 
-  function getCurrentCode() {
-    var index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
-    return getCodeAtIndex(index);
+  var isLocal = window.location.protocol === 'file:';
+
+  async function getCurrentCode() {
+    if (isLocal) {
+      var index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
+      return getCodeAtIndex(index);
+    }
+    try {
+      var res = await fetch('/api/voucher-index');
+      var data = await res.json();
+      return getCodeAtIndex(data.index);
+    } catch (e) {
+      var index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
+      return getCodeAtIndex(index);
+    }
   }
 
-  function advanceToNextCode() {
-    var index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
-    index++;
-    localStorage.setItem('bonsai_voucher_index', index.toString());
-    return getCodeAtIndex(index);
+  async function advanceToNextCode() {
+    if (isLocal) {
+      var index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
+      index++;
+      localStorage.setItem('bonsai_voucher_index', index.toString());
+      return getCodeAtIndex(index);
+    }
+    try {
+      var res = await fetch('/api/voucher-index', { method: 'POST' });
+      var data = await res.json();
+      return getCodeAtIndex(data.index);
+    } catch (e) {
+      var index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
+      index++;
+      localStorage.setItem('bonsai_voucher_index', index.toString());
+      return getCodeAtIndex(index);
+    }
   }
 
   function formatDate(dateStr) {
@@ -607,11 +631,11 @@
   }
   window.addEventListener('resize', scaleVoucher);
 
-  window.addEventListener('DOMContentLoaded', () => {
+  window.addEventListener('DOMContentLoaded', async () => {
     setTimeout(scaleVoucher, 100);
     // Show current voucher code on page load (without advancing)
     document.getElementById('expiry').value = defaultExpiry();
-    document.getElementById('code').value = getCurrentCode();
+    document.getElementById('code').value = await getCurrentCode();
     generateVoucher();
   });
 
@@ -622,8 +646,7 @@
     let expiry = document.getElementById('expiry').value;
 
     if (!code) {
-      code = getCurrentCode();
-      document.getElementById('code').value = code;
+      code = 'LOADING...';
     }
     if (!expiry) {
       expiry = defaultExpiry();
@@ -731,9 +754,9 @@
     });
   }
 
-  function nextVoucher() {
+  async function nextVoucher() {
     document.getElementById('message').value = '';
-    document.getElementById('code').value = advanceToNextCode();
+    document.getElementById('code').value = await advanceToNextCode();
     document.getElementById('expiry').value = defaultExpiry();
     generateVoucher();
     scaleVoucher();
