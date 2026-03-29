@@ -546,28 +546,31 @@
     '26-028P5M','26-028Q3X','26-028R8D','26-028S6Q'
   ];
 
-  function getNextCode() {
-    let index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
-    let code;
+  function getCodeAtIndex(index) {
     if (index < VOUCHER_CODES.length) {
-      code = VOUCHER_CODES[index];
-    } else {
-      // Generate new codes when list is exhausted
-      const year = new Date().getFullYear().toString().slice(-2);
-      const seq = (index - VOUCHER_CODES.length + 1).toString().padStart(3, '0');
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-      let suffix = '';
-      for (let i = 0; i < 2; i++) {
-        suffix += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      code = year + '-' + seq + suffix;
+      return VOUCHER_CODES[index];
     }
-    localStorage.setItem('bonsai_voucher_index', (index + 1).toString());
-    return code;
+    // Generate new codes when list is exhausted
+    const year = new Date().getFullYear().toString().slice(-2);
+    const seq = (index - VOUCHER_CODES.length + 1).toString().padStart(3, '0');
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    let suffix = '';
+    for (let i = 0; i < 2; i++) {
+      suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return year + '-' + seq + suffix;
   }
 
-  function generateCode() {
-    return getNextCode();
+  function getCurrentCode() {
+    var index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
+    return getCodeAtIndex(index);
+  }
+
+  function advanceToNextCode() {
+    var index = parseInt(localStorage.getItem('bonsai_voucher_index') || '0');
+    index++;
+    localStorage.setItem('bonsai_voucher_index', index.toString());
+    return getCodeAtIndex(index);
   }
 
   function formatDate(dateStr) {
@@ -605,11 +608,10 @@
   window.addEventListener('resize', scaleVoucher);
 
   window.addEventListener('DOMContentLoaded', () => {
-    localStorage.setItem('bonsai_voucher_index', '0');
     setTimeout(scaleVoucher, 100);
-    // Auto-generate first voucher on page load
+    // Show current voucher code on page load (without advancing)
     document.getElementById('expiry').value = defaultExpiry();
-    document.getElementById('code').value = generateCode();
+    document.getElementById('code').value = getCurrentCode();
     generateVoucher();
   });
 
@@ -620,7 +622,7 @@
     let expiry = document.getElementById('expiry').value;
 
     if (!code) {
-      code = generateCode();
+      code = getCurrentCode();
       document.getElementById('code').value = code;
     }
     if (!expiry) {
@@ -731,7 +733,7 @@
 
   function nextVoucher() {
     document.getElementById('message').value = '';
-    document.getElementById('code').value = generateCode();
+    document.getElementById('code').value = advanceToNextCode();
     document.getElementById('expiry').value = defaultExpiry();
     generateVoucher();
     scaleVoucher();
