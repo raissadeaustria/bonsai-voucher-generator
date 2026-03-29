@@ -693,38 +693,40 @@
     btn.textContent = 'Generování...';
     btn.disabled = true;
 
-    // Temporarily reset scale for capture
     const origTransform = voucher.style.transform;
     voucher.style.transform = 'none';
 
-    html2canvas(voucher, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      width: 800,
-      height: 566,
-      windowWidth: 800
-    }).then(function(canvas) {
-      voucher.style.transform = origTransform;
-      var jsPDF = window.jspdf.jsPDF;
-      var pdf = new jsPDF('l', 'mm', 'a4');
-      var pdfW = 287;
-      var pdfH = pdfW * (566 / 800);
-      var x = (297 - pdfW) / 2;
-      var y = (210 - pdfH) / 2;
-      var imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', x, y, pdfW, pdfH);
-      var code = document.getElementById('code').value;
-      pdf.save('voucher-' + code + '.pdf');
-      btn.textContent = 'Uložit PDF';
-      btn.disabled = false;
-    }).catch(function(err) {
-      voucher.style.transform = origTransform;
-      btn.textContent = 'Uložit PDF';
-      btn.disabled = false;
-      console.error('PDF generation failed:', err);
-      alert('Nepodařilo se vygenerovat PDF. Zkuste to prosím znovu.');
+    document.fonts.ready.then(function() {
+      html2canvas(voucher, {
+        scale: 8,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 800,
+        height: 566,
+        windowWidth: 800,
+        imageTimeout: 0
+      }).then(function(canvas) {
+        voucher.style.transform = origTransform;
+        var jsPDF = window.jspdf.jsPDF;
+        var pdf = new jsPDF({orientation: 'l', unit: 'mm', format: 'a4', compress: false});
+        var pdfW = 287;
+        var pdfH = pdfW * (566 / 800);
+        var x = (297 - pdfW) / 2;
+        var y = (210 - pdfH) / 2;
+        var imgData = canvas.toDataURL('image/png');
+        pdf.addImage(imgData, 'PNG', x, y, pdfW, pdfH);
+        var code = document.getElementById('code').value;
+        pdf.save('voucher-' + code + '.pdf');
+        btn.textContent = 'Uložit PDF';
+        btn.disabled = false;
+      }).catch(function(err) {
+        voucher.style.transform = origTransform;
+        btn.textContent = 'Uložit PDF';
+        btn.disabled = false;
+        console.error('PDF generation failed:', err);
+        alert('Nepodařilo se vygenerovat PDF. Zkuste to prosím znovu.');
+      });
     });
   }
 
@@ -760,26 +762,44 @@ async function doLogin() {
   const pwd = document.getElementById('loginPassword').value;
   document.getElementById('loginBtn').disabled = true;
   document.getElementById('loginBtn').textContent = 'Přihlašování...';
-  try {
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pwd })
-    });
-    const data = await res.json();
-    if (data.success) {
-      localStorage.setItem('bonsai_voucher_gen_auth', 'true');
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('mainApp').style.display = '';
-      setTimeout(function(){ scaleVoucher(); }, 100);
-    } else {
-      document.getElementById('loginError').style.display = 'block';
-      document.getElementById('loginPassword').value = '';
-      document.getElementById('loginPassword').style.borderColor = '#c0392b';
-    }
-  } catch (e) {
-    document.getElementById('loginError').textContent = 'Přihlášení selhalo, zkuste znovu';
+
+  function onSuccess() {
+    localStorage.setItem('bonsai_voucher_gen_auth', 'true');
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = '';
+    setTimeout(function(){ scaleVoucher(); }, 100);
+  }
+  function onFail() {
     document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginPassword').style.borderColor = '#c0392b';
+  }
+
+  if (window.location.protocol === 'file:') {
+    // Local mode: check password client-side
+    if (pwd === 'b0n-za1!') {
+      onSuccess();
+    } else {
+      document.getElementById('loginError').textContent = 'Nesprávné heslo';
+      onFail();
+    }
+  } else {
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwd })
+      });
+      const data = await res.json();
+      if (data.success) {
+        onSuccess();
+      } else {
+        onFail();
+      }
+    } catch (e) {
+      document.getElementById('loginError').textContent = 'Přihlášení selhalo, zkuste znovu';
+      document.getElementById('loginError').style.display = 'block';
+    }
   }
   document.getElementById('loginBtn').disabled = false;
   document.getElementById('loginBtn').textContent = 'Přihlásit se';
